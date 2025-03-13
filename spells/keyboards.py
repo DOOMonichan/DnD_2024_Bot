@@ -80,45 +80,6 @@ async def generate_favourites_keyboard(message: types.Message):
         text = "У вас нет избранных заклинаний!"
     return text, kb
         
-
-
-#Генератор инлайн кнопок фильтров, принимает значения параметра(в виде: 00111000) и параметр фильтра(cells, class и т.д.)
-async def generate_filter_keyboard(param_value, param):
-    dict_values = {"cells": ["Заговор","1", "2", "3", "4", "5", "6", "7", "8", "9"],
-                   "class": ["Варвар", "Бард", "Жрец", "Следопыт", "Друид", "Воин", "Колдун", "Плут", "Монах", "Паладин", "Чародей", "Волшебник"],
-                   "school": ["Ограждение", "Вызов", "Прорицание", "Очарование", "Воплощение", "Иллюзия", "Некромантия", "Преобразование"],
-                   "time": ["Реакция", "Действие", "Бонусное действие", "1 минута", "Больше минуты", "Ритуал"],
-                   "distance": ["На себя", "Касание", "до 30 фт", "30 фт", "60-119 фт", "120 фт и больше"],
-                   "components": ["Вербальный", "Соматический", "Материальный не расходуемый", "Материальный расходуемый"],
-                   "duration": ["Мгновенно", "Раунд", "Минута", "Больше минуты", "Концентрация минуту и менее", "Концентрация больше минуты", "Пока не рассеется"]
-                   }
-    #При каких значениях кнопка переносится на след строку
-    now_row_values = ["1", "4", "7", "Следопыт", "Колдун", "Паладин", "Прорицание", "Воплощение", "Некромантия", "Бонусное действие", "1 минута", "Ритуал" ,"до 30 фт", "60-119 фт", "120 фт и больше", "Материальный не расходуемый", "Материальный расходуемый", "Минута", "Концентрация минуту и менее", "Концентрация больше минуты", "Пока не рассеется"]
-    list_values = dict_values[param]
-    #Перевод значения параметра из двоичного в булево
-    list_param = list()
-    for i in list(param_value):
-        if int(i) == 0:
-            list_param.append("True")
-        else:
-            list_param.append("False")
-    #Создание самой клавиатуры из словаря dict_values
-    builder = InlineKeyboardBuilder()
-    for i in range(len(list_values)):
-        if list_values[i] in now_row_values:
-            if list_param[i] == "True":
-                builder.row(types.InlineKeyboardButton(text=list_values[i], callback_data=f"filter_{param}_{list_param[i]}_{str(i)}"))
-            else:
-                builder.row(types.InlineKeyboardButton(text=f"✔{list_values[i]}✔", callback_data=f"filter_{param}_{list_param[i]}_{str(i)}"))
-        else:
-            if list_param[i] == "True":
-                builder.add(types.InlineKeyboardButton(text=list_values[i], callback_data=f"filter_{param}_{list_param[i]}_{str(i)}"))
-            else:
-                builder.add(types.InlineKeyboardButton(text=f"✔{list_values[i]}✔", callback_data=f"filter_{param}_{list_param[i]}_{str(i)}"))
-    builder.row(types.InlineKeyboardButton(text="Продолжить", callback_data=f"finish_filter_{param}"))
-    return builder.as_markup()
-
-
 #Генератор найденных по фильтрам заклинаний и размещение на разных страницах
 async def filtered_spell_generator_keyboard(index_spells, page):
     builder = InlineKeyboardBuilder()

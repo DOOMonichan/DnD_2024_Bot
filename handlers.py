@@ -1,8 +1,10 @@
 
 import logging
 from spells.keyboards import *
+from spells.keyboards_filter import *
 from spells.edit_DataBace import *
-from spells.SpellsFilter import filter_update, finish_filter
+from spells.df_editor import applying_filters
+from spells.SpellsFilter import filter_update, printer_filter, print_filter
 from spells.SpellsSearcher import spell_serch, res_search
 from aiogram import F, Dispatcher, types, Bot
 from aiogram.filters import Command
@@ -11,13 +13,19 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 logging.basicConfig(level=logging.INFO)
-API_TOKEN = "TG_TOKEN"
+API_TOKEN =  "TG_TOKEN"
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 #Переключатель улавливателя введенных сообщений
 class Form(StatesGroup):
     spell = State()
+
+#Скрывает клавиатуру
+@dp.message(Command("stop"))
+async def cmd_stop(message: types.Message):
+    await message.answer("Клавиатура скрыта", reply_markup=types.ReplyKeyboardRemove())
+
 
 
 @dp.message(F.text=="В меню")
@@ -48,33 +56,63 @@ async def cmd_search_spell(message: types.Message):
     await message.answer("Как будем искать? ", reply_markup=builder.as_markup(resize_keyboard=True))
 
 
+#Старт фильтрации, обновляет положение вкладок, выводит их и сообщение о примененых фильтрах
 @dp.message(Command("filter"))
 @dp.message(F.text=="Фильтровать")
 async def cmd_search_filter(message: types.Message):
     user_id = message.from_user.id
-    param = "cells"
-    param_value = str(await get_filter_param(user_id, param))
-    kb = await generate_filter_keyboard(param_value, param)  
-    await message.answer("Выберете ячейки заклинаний", reply_markup=kb)
+    await update_filter_param(user_id, "tabs", "0000000")
+    tabs = await generate_keyboard_tabs_filter(user_id)
+    builder = InlineKeyboardBuilder()
+    for tab in tabs:
+        builder.row(tab, width=1)
+    text, dict_filter = await print_filter(user_id)
+    df_filter = await applying_filters(dict_filter)
+    num_spells = len(df_filter["name"])
+    text += f"\n_Кол-во найденых заклинаний: {num_spells}_"
+    builder.row(types.InlineKeyboardButton(text="|Применить|", callback_data=f"finish_filter"))
+    builder.row(types.InlineKeyboardButton(text="|Сбросить|", callback_data=f"reset_filter")) 
+    await message.answer(f"*Сейчас применены такие фильтры:*\n{text}", parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
+#Обновление сообщения фильтра с изменением кнопок и информации о применяемых фильтрах
 @dp.callback_query(F.data.startswith("filter_"))
 async def filter_(callback: types.CallbackQuery):
-    kb = await filter_update(callback)
-    await bot.edit_message_reply_markup(chat_id=callback.message.chat.id, message_id=callback.message.message_id, reply_markup=kb)
+    user_id = callback.from_user.id
+    if callback.data.startswith("filter_"):
+        await filter_update(callback)
+    text, dict_filter = await print_filter(user_id)
+    df_filter = await applying_filters(dict_filter)
+    num_spells = len(df_filter["name"])
+    text += f"\n_Кол-во найденых заклинаний: {num_spells}_"
+    kb = await generate_all_keyboard_filter(user_id)
+    chat_id=callback.message.chat.id
+    message_id=callback.message.message_id
+    await bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id, parse_mode="Markdown")
+    await bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=kb)
 
 
-@dp.callback_query(F.data.startswith("finish_"))
-async def finish_(callback: types.CallbackQuery):
+#Конец обработки фильтров, выводит найденные по запросу заклинания
+@dp.callback_query(F.data.startswith("finish_filter"))
+async def finish_filter(callback: types.CallbackQuery):
     await bot.delete_message(chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-    await finish_filter(callback)
+    await printer_filter(callback)
 
 
+#Сброс фильтров
+@dp.callback_query(F.data.startswith("reset_filter"))
+async def reset_filter(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    await rec_new_filter(user_id)
+    await filter_(callback)
+
+
+#Переход на другую страницу в найденных по фильтру заклинаниях
 @dp.callback_query(F.data.startswith("keyboard_filter_"))
 async def keyboard_filter(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    page = int(callback.data.split("_")[-1])
-    index_spells = await get_filter_param(user_id, "index_list")
+    index_spells =  await get_filter_param(user_id, "index_list")
+    page = int(callback.data.replace("keyboard_filter_", ""))
     kb = await filtered_spell_generator_keyboard(index_spells, page)
     await bot.edit_message_reply_markup(chat_id=callback.message.chat.id, message_id=callback.message.message_id, reply_markup=kb)
 

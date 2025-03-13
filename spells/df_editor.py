@@ -1,4 +1,5 @@
 import pandas as pd
+from spells.edit_DataBace import get_filter_param
 
 #Блок кода переводит все кроме описания заклинаний к нижнему регистру и строковый тип данных
 spells_data = pd.read_csv("spells\spells_phb_2024.csv")
@@ -22,6 +23,7 @@ def isin_list(spell_value, list_filter):
 
 #Применение фильтров к DF
 async def applying_filters(dict_filter):
+    
     dict_filter["cells"] = ",".join(dict_filter["cells"]).replace("Заговор", "0").split(",")
     for k, v in dict_filter.items():
        dict_filter[k] = [v.lower() for v in dict_filter[k]]
@@ -40,3 +42,24 @@ async def applying_filters(dict_filter):
     
     df_filter = spells_data[cells & classes & school & time & distance & components & duration]
     return df_filter
+
+
+async def get_full_filter_param(user_id):
+    dict_values = {"cells": ["Заговор","1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                   "class": ["Бард", "Жрец", "Следопыт", "Друид", "Колдун", "Паладин", "Чародей", "Волшебник"],
+                   "school": ["Ограждение", "Вызов", "Прорицание", "Очарование", "Воплощение", "Иллюзия", "Некромантия", "Преобразование"],
+                   "time": ["Реакция", "Действие", "Бонусное действие", "1 минута", "Больше минуты", "Ритуал"],
+                   "distance": ["На себя", "Касание", "до 30 фт", "30 фт", "60-119 фт", "120 фт и больше"],
+                   "components": ["Вербальный", "Соматический", "Материальный не расходуемый", "Материальный расходуемый"],
+                   "duration": ["Мгновенно", "Раунд", "Минута", "Больше минуты", "Концентрация минуту и менее", "Концентрация больше минуты", "Пока не рассеется"]
+                   }
+    dict_filter = {"cells": list(), "class": list(), "school": list(), "time": list() ,"distance": list(), "components": list(), "duration": list()}
+    for param, values in dict_values.items():
+        values_param = await get_filter_param(user_id, param)
+        if "0" not in values_param or "1" not in values_param:
+            dict_filter[param] = values[:]
+        else:            
+            for i in range(len(values_param)):
+                if  values_param[i] == "1":
+                    dict_filter[param].append(values[i])
+    return dict_filter

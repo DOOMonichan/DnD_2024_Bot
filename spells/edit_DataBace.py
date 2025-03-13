@@ -51,11 +51,11 @@ async def get_filter_param(user_id, param):
 
 async def rec_new_filter(user_id):
     async with aiosqlite.connect(DB_FILTER) as db:
-        await db.execute('INSERT OR REPLACE INTO filter_spells (user_id, cells, school, class, time, distance, components, duration, index_list) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', (user_id, "0000000000", "00000000", "000000000000", "000000", "0000000", "0000", "0000000", ""))
+        await db.execute('INSERT OR REPLACE INTO filter_spells (user_id, cells, school, class, time, distance, components, duration, index_list, tabs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (user_id, "0000000000", "00000000", "00000000", "000000", "0000000", "0000", "0000000", "", "0000000"))
         await db.commit()
 
 
 async def create_table_filter_spells():
     async with aiosqlite.connect(DB_FILTER) as db:
-        await db.execute('''CREATE TABLE IF NOT EXISTS filter_spells (user_id INTEGER PRIMARY KEY, cells TEXT, school TEXT, class TEXT, time TEXT, distance TEXT, components TEXT, duration TEXT, index_list TEXT)''')
+        await db.execute('''CREATE TABLE IF NOT EXISTS filter_spells (user_id INTEGER PRIMARY KEY, cells TEXT, school TEXT, class TEXT, time TEXT, distance TEXT, components TEXT, duration TEXT, index_list TEXT, tabs TEXT)''')
         await db.commit()      
